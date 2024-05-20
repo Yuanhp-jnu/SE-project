@@ -123,77 +123,11 @@ def analog_image():
     print(f"最大误差： {max_error_proportion:.3%}")
 
 
-def real_image():
-    """
-    使用真实的cassin图像，没有真实的PSF作为评价标准
-    :return:
-    """
-    Fits_dir = 'FITS'
-    Qmpf_dir = 'QMPF'
-
-    # 遍历源目录下的所有文件
-    for fits_file_name in os.listdir(Fits_dir):
-        # 检查文件扩展名是否为.fits
-        if fits_file_name.endswith('.fits'):
-            # 构建源文件的完整路径
-            source_file_path = os.path.join(Fits_dir, fits_file_name)
-            print(source_file_path)
-
-            # 找到最后一个下划线的索引
-            last_underscore_index = fits_file_name.rfind('_')
-            # 如果最后一个下划线存在，去掉它以及其后面的所有字符
-            if last_underscore_index != -1:
-                fits_file_name = fits_file_name[:last_underscore_index]
-
-            # 构建目标文件的完整路径，假设目标文件扩展名为.first
-            target_file_path = os.path.join(Qmpf_dir, f"{fits_file_name}.QMPF")
-            # 检查目标文件是否存在
-            if os.path.isfile(target_file_path):
-                print(target_file_path)
-                # 读取fits图像文件
-                image = fits.getdata(source_file_path)
-                # 获取星源中心坐标
-                star_list = get_star_list(target_file_path)
-                # 读取的值太小，将其扩大
-                image = (image - np.min(image)) * (4000 / np.max(image) - np.min(image))
-
-                for star in star_list:
-                    x = int(star[0])
-                    y = int(star[1])
-                    img = np.full((9, 9), 0).astype(np.float64)
-                    img = map_to_small_image(image, img, (x + 0.5, y + 0.5))
-                    x0, y0 = moment_method(img)
-                    # x0 = x - 4 + x0
-                    # y0 = y - 4 + y0
-                    print(f"原坐标：({star[0]}, {star[1]}); 矩方法坐标：（{x0}, {y0}）")
-
-                P_ibp, Ps = arithmetic(image, star_list, 15, 0, 2)
-                P_ibp = P_ibp / np.sum(P_ibp)
-                Ps = Ps / np.sum(Ps)
-                rld = {'P_ibp': P_ibp}
-                Ps = {'Ps': Ps}
-                chart(rld, Ps)
-                plt.title('Pibp')
-                plt.imshow(P_ibp)
-                plt.show()
-
-                # 保存新建的PSF
-                with open('psf_model.pkl', 'wb') as f:
-                    pickle.dump(P_ibp, f)
-                break
-
-
 if __name__ == '__main__':
     r = 10  # 细化倍数
     d = 5  # 判断拥挤源的像素距离
-    mask_size = 50  # 截取区域像素尺寸，6*sigma，正负3sigma，+1使得中心只有一个像素
-    iterative = 15  # IBP算法迭代次数
-    iterative_rld = 15  # RLD算法迭代次数
-
-    # pattern为0使用模拟图像，为1使用Cassini图像
-    pattern = 0
-
-    if pattern == 0:
-        analog_image()
-    else:
-        real_image()
+    mask_size = 30  # 截取区域像素尺寸，6*sigma，正负3sigma，+1使得中心只有一个像素
+    iterative = 100  # IBP算法迭代次数
+    iterative_rld = 100  # RLD算法迭代次数
+    
+    analog_image()
